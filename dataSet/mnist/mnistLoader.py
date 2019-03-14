@@ -31,8 +31,8 @@ class MnistDataset(Dataset):
 
   def __getitem__(self, index):
 
-    x = torch.tensor(self.data[index])
-    x = x.view(1, IMAGE_CHANNEL, IMAGE_SIZE, IMAGE_SIZE)
+    x = torch.tensor(self.data[index], dtype = torch.float)
+    x = x.view(IMAGE_CHANNEL, IMAGE_SIZE, IMAGE_SIZE)
     y = torch.tensor(self.label[index])
 
     return x,y
