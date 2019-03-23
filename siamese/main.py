@@ -3,6 +3,7 @@ sys.path.insert(0, '/home/ai/metaL-Reproduction')
 import os
 
 import numpy as np
+import matplotlib.image as mpimg
 from figs import ABS_PATH
 
 import torch
@@ -14,33 +15,69 @@ OMNIGLOT_DATAPATH = ABS_PATH + '/dataSet/omniglot/python'
 
 
 class OmniglotLoader(Dataset):
-  def __init__(self):
+  def __init__(self, train):
     super(OmniglotLoader, self).__init__()
-    
+    self.data = None
+    self.label = None
+    self.train = train
+
   def load_images(self, target = "standard", path=OMNIGLOT_DATAPATH, train = True):
-  """
-  This functions load images from Omniglot
-  Arguments:
-    target: standard or minimal
-    path: path to the Omniglot dataset
-  """
+    """
+    This functions load images from Omniglot
+    Arguments:
+        target: standard or minimal
+        path: path to the Omniglot dataset
+    """
     X = []
     Y = []
+    folderName = {}
+    if target == "standard":
+        trainFolders = ["images_background"]
+        testFolders = ["images_evaluation"]
+    elif target == "minimal":
+        trainFolders = ["images_background_small1", "images_background_small2"]
+        testFolders = ["images_evaluation"]
 
-    for folder in os.listdir(path):
-      folderPath = path + '/' + folder
-      if target == "standard":
-        trainFolder = ["images_background"]
-        testFolder = ["images_evaluation"]
-      elif target == "minimal":
-        trainFolder= ["images_background_small1", "images_background_small2"]
-        testFolder = ["images_evaluation"]
-      if os.path.isdir(folderPath) and folder != '__MACOSX': 
-        print("Loading images at folder: " + folderPath + "\n") 
-        for alphabet in os.listdir(folderPath):
-          alphabetPath = folderPath + '/' + alphabet
-          print("Loading images at folder: " + alphabetPath)
-  pass
+    if train:
+        for trainFolder in trainFolders:
+            folderPath = os.path.join(path, trainFolder)
+
+            imgAllCount = 0 # this is counted for the whole images in all alphabet
+            chaAllCount = 0 # this is counted for the whole characters in all alphabet
+
+            for alphabet in sorted(os.listdir(folderPath)):
+                alphabetPath = os.path.join(folderPath, alphabet)
+                folderName[alphabet] = {'totalChar': 0, 'charIndex': [], 'totalImg': 0, 'imgIndex': []}
+
+                imgAlphabetCount = 0 # this is counted for the number of images in this alphabet
+                chaAlphabetCount = 0 # this is counted for the number of character in this alphabet
+
+                folderName[alphabet]['charIndex'].append(chaAllCount)
+                folderName[alphabet]['imgIndex'].append(imgAllCount)
+
+                for letter in sorted(os.listdir(alphabetPath)):
+                    letterPath = os.path.join(alphabetPath, letter)
+
+                    for letterImage in os.listdir(letterPath):
+                        imagePath = os.path.join(letterPath, letterImage)
+                        image = mpimg.imread(imagePath)
+                        X.append(image)
+                        Y.append(chaAllCount)
+
+                        imgAlphabetCount += 1
+                        imgAllCount += 1
+
+                    chaAlphabetCount += 1
+                    chaAllCount += 1
+
+                folderName[alphabet]['totalChar'] = chaAlphabetCount
+                folderName[alphabet]['totalImg']  = imgAlphabetCount
+                folderName[alphabet]['charIndex'].append(chaAllCount-1)
+                folderName[alphabet]['imgIndex'].append(imgAllCount-1)
+
+    
+        return np.stack(X), np.stack(Y), folderName
+
     
     
 
@@ -110,4 +147,4 @@ class LossFunction(nn.Module):
     super(LossFunction, self).__init__()
 
 
-OmniglotLoader().load_images()
+#OmniglotLoader().load_images()
