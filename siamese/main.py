@@ -1,6 +1,7 @@
 import sys
 sys.path.insert(0, '/home/ai/metaL-Reproduction')
 import os
+import random
 
 import numpy as np
 import matplotlib.image as mpimg
@@ -12,16 +13,19 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
 OMNIGLOT_DATAPATH = ABS_PATH + '/dataSet/omniglot/python'
+IMAGES_PER_CHARACTER = 20
 
 
 class OmniglotLoader(Dataset):
-  def __init__(self, train):
+  def __init__(self, train, n):
     super(OmniglotLoader, self).__init__()
     self.data = None
-    self.label = None
+    self.labels = None
     self.train = train
 
-  def load_images(self, target = "standard", path=OMNIGLOT_DATAPATH, train = True):
+    self.get_batch(n)
+
+  def load_images(self, target = "standard", path=OMNIGLOT_DATAPATH):
     """
     This functions load images from Omniglot
     Arguments:
@@ -38,7 +42,7 @@ class OmniglotLoader(Dataset):
         trainFolders = ["images_background_small1", "images_background_small2"]
         testFolders = ["images_evaluation"]
 
-    if train:
+    if self.train:
         for trainFolder in trainFolders:
             folderPath = os.path.join(path, trainFolder)
 
@@ -75,10 +79,48 @@ class OmniglotLoader(Dataset):
                 folderName[alphabet]['charIndex'].append(chaAllCount-1)
                 folderName[alphabet]['imgIndex'].append(imgAllCount-1)
 
-    
-        return np.stack(X), np.stack(Y), folderName
+        X = np.stack(X) 
+        X = X.reshape(-1, IMAGES_PER_CHARACTER, X.shape[1], X.shape[2])
+        return X, np.stack(Y), folderName
 
-    
+    def get_batch(self, n):
+        X, Y, folderProp = self.load_images()
+        numOfChars, _, w, h = X[0]
+        # generate n groups in numOfCharacters
+        groups = np.random.choice(numOfChars, n, replace = False)
+
+        # generate pairs which is a list, n*2*105*105*1
+        pairs = np.zeros((n,2) + X.shape[2:end] + (1,))
+        
+        # generate half n is same, half is not
+        labels = np.random.choice(2, n, p = [0.5, 0.5])
+
+        for i in range(n):
+            index1 = np.random.randint(IMAGES_PER_CHARACTER)
+            group = groups[i]
+            pairs[i][0] = X[group, index1].reshape(w, h, 1)
+
+            index2 = np.random.randin(IMAGES_PER_CHARACTER)
+
+            if labels[i] == 1:
+                pairs[i][1] = X[group, index2].reshape(w, h, 1)
+            else:
+                group = (group + np.random.randint(1,numOfChars) % numOfChars)
+                pairs[i][1] = X[group, index2].rshape(w, h, 1)
+
+        self.data = pairs
+        self.labels = labels
+   
+   def __len__(self):
+       return self.data.shape[1]
+
+   def __get_item__(self, index):
+       img1 = self.data[0][index]
+       img2 = self.data[1][index]
+       label = self.labels[index]
+
+       return ([img1, img2], label)
+
     
 
 class Network(nn.Module):
